@@ -67,15 +67,16 @@ class PDOGateway implements GatewayInterface
      * @param string $token
      * @param integer $userId
      * @param DateTime $expires
+     * @param integer $state
      */
-    public function storeToken($token, $userId, \DateTime $expires)
+    public function storeToken($token, $userId, \DateTime $expires, $state)
     {
         $sql = "INSERT INTO {$this->table} (token, user_id, expires, state) VALUES (:token, :user_id, :expires, :state)";
         $sth = $this->db->prepare($sql);
         $sth->bindValue("token", $token);
         $sth->bindValue("user_id", (int) $userId, PDO::PARAM_INT);
         $sth->bindValue("expires", $expires->format("Y-m-d H:i:s"));
-        $sth->bindValue("state", TokenState::VALID, PDO::PARAM_INT);
+        $sth->bindValue("state", (int) $state, PDO::PARAM_INT);
         $sth->execute();
     }
 

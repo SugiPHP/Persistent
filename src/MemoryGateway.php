@@ -38,9 +38,9 @@ class MemoryGateway implements GatewayInterface
         });
     }
 
-    public function storeToken($token, $userId, \DateTime $expires)
+    public function storeToken($token, $userId, \DateTime $expires, $state)
     {
-        $this->storage[] = ["token" => $token, "user_id" => $userId, "expires" => $expires->format("Y-m-d H:i:s"), "state" => TokenState::VALID];
+        $this->storage[] = ["token" => $token, "user_id" => $userId, "expires" => $expires->format("Y-m-d H:i:s"), "state" => $state];
     }
 
     public function changeTokenState($token, $state)
@@ -48,7 +48,7 @@ class MemoryGateway implements GatewayInterface
         foreach ($this->storage as &$arr) {
             if ($arr["token"] == $token) {
                 $arr["state"] = $state;
-                return ;
+                break;
             }
         }
     }

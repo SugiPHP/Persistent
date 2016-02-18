@@ -35,8 +35,9 @@ interface GatewayInterface
      * @param string $token
      * @param integer $userId
      * @param DateTime $expires
+     * @param integer $state
      */
-    public function storeToken($token, $userId, \DateTime $expires);
+    public function storeToken($token, $userId, \DateTime $expires, $state);
 
     /**
      * Change a token state.

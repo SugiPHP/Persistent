@@ -86,7 +86,7 @@ class Persistent
         // invalidate the token and store a NEW token cookie with the same expiration time
         $this->gateway->changeTokenState($token, TokenState::INVALID);
         $newToken = $this->createToken();
-        $this->gateway->storeToken($newToken, $userId, $expires);
+        $this->gateway->storeToken($newToken, $userId, $expires, TokenState::VALID);
         $this->cookie->set($newToken, $expires);
 
         $this->log("info", "Persistent Login for user ID {$userId}");
@@ -100,7 +100,7 @@ class Persistent
         $expires = new DateTime($this->expireInterval);
 
         // save data in the DB
-        $this->gateway->storeToken($token, $userId, $expires);
+        $this->gateway->storeToken($token, $userId, $expires, TokenState::VALID);
 
         // set cookie with the token
         $this->cookie->set($token, $expires);
