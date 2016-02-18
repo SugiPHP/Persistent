@@ -126,7 +126,9 @@ class Persistent
      */
     public function clearPersistenceForUser($userId)
     {
-        $tokens = $this->gateway->findUserTokens($userId, TokenState::VALID);
+        if (!$tokens = $this->gateway->findUserTokens($userId, TokenState::VALID)) {
+            return ;
+        }
         foreach ($tokens as $t) {
             $this->gateway->changeTokenState($t["token"], TokenState::VOID);
         }

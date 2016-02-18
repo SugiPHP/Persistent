@@ -14,27 +14,20 @@ use SugiPHP\Persistent\Cookie;
 use SugiPHP\Persistent\TokenState;
 use SugiPHP\Persistent\Persistent as Service;
 use SugiPHP\Persistent\GatewayInterface;
-use SugiPHP\Persistent\Tests\MemoryGateway as Gateway;
+use SugiPHP\Persistent\InvalidTokenException;
+use SugiPHP\Persistent\Tests\MemoryGateway;
 
 class PersistentTest extends \PHPUnit_Framework_TestCase
 {
-    const DEMODATA = [
-        ["token" => "123", "user_id" => 1, "state" => TokenState::INVALID],
-        ["token" => "abc", "user_id" => 1, "state" => TokenState::VALID],
-        ["token" => "qwe", "user_id" => 2, "state" => TokenState::VOID],
-    ];
-
     private $cookie;
-    private $gateway;
+    private $storage;
     private $service;
 
     public function setUp()
     {
-        $data = self::DEMODATA;
-
-        $this->gateway = new Gateway($data);
-        $this->cookie = new Cookie();
-        $this->service = new Service($this->gateway, $this->cookie);
+        $this->storage = $this->getMock("SugiPHP\Persistent\Tests\MemoryGateway");
+        $this->cookie = $this->getMock("SugiPHP\Persistent\Cookie");
+        $this->service = new Service($this->storage, $this->cookie);
     }
 
     public function testCreate()
@@ -45,5 +38,121 @@ class PersistentTest extends \PHPUnit_Framework_TestCase
     public function testGetPersistentUserReturnsNullIfNoCookieFound()
     {
         $this->assertNull($this->service->getPersistentUser());
+    }
+
+    public function testGetPersistentUserReturnsNullIfNoTokenFoundInTheStorage()
+    {
+        $this->cookie->expects($this->once())->method("get")->will($this->returnValue('wrongtoken'));
+        $this->assertNull($this->service->getPersistentUser());
+    }
+
+    public function testGetPersistentUserReturnsNullIfExpireIsMissingFromTheStorageData()
+    {
+        $token = "123";
+        $userId = 1;
+        $date = date("Y-m-d H:i:s", strtotime("+1 week"));
+        $state = TokenState::VALID;
+        $this->storage->expects($this->once())
+            ->method("findToken")
+            ->will($this->returnValue(["token" => $token, "user_id" => $userId, "state" => $state]));
+        $this->cookie->expects($this->once())->method("get")->will($this->returnValue($token));
+        $this->cookie->expects($this->once())->method("delete");
+        $this->assertNull($this->service->getPersistentUser());
+    }
+
+    public function testGetPersistentUserReturnsNullIfUserIdIsMissingFromTheStorageData()
+    {
+        $token = "123";
+        $userId = 1;
+        $date = date("Y-m-d H:i:s", strtotime("+1 week"));
+        $state = TokenState::VALID;
+        $this->storage->expects($this->once())
+            ->method("findToken")
+            ->will($this->returnValue(["token" => $token, "state" => $state, "expires" => $date]));
+        $this->cookie->expects($this->once())->method("get")->will($this->returnValue($token));
+        $this->cookie->expects($this->once())->method("delete");
+        $this->assertNull($this->service->getPersistentUser());
+    }
+
+    public function testGetPersistentUserReturnsNullIfStateIsMissingFromTheStorageData()
+    {
+        $token = "123";
+        $userId = 1;
+        $date = date("Y-m-d H:i:s", strtotime("+1 week"));
+        $state = TokenState::VALID;
+        $this->storage->expects($this->once())
+            ->method("findToken")
+            ->will($this->returnValue(["token" => $token, "user_id" => $userId, "expires" => $date]));
+        $this->cookie->expects($this->once())->method("get")->will($this->returnValue($token));
+        $this->cookie->expects($this->once())->method("delete");
+        $this->assertNull($this->service->getPersistentUser());
+    }
+
+    public function testGetPersistentUserReturnsNullIfStateIsVoid()
+    {
+        $token = "123";
+        $userId = 1;
+        $date = date("Y-m-d H:i:s", strtotime("+1 week"));
+        $state = TokenState::VOID;
+        $this->storage->expects($this->once())
+            ->method("findToken")
+            ->will($this->returnValue(["token" => $token, "user_id" => $userId, "state" => $state, "expires" => $date]));
+        $this->cookie->expects($this->once())->method("get")->will($this->returnValue($token));
+        $this->cookie->expects($this->once())->method("delete");
+        $this->assertNull($this->service->getPersistentUser());
+    }
+
+    public function testGetPersistentUserReturnsNullIfExpiresIsInThePast()
+    {
+        $token = "123";
+        $userId = 1;
+        $date = date("Y-m-d H:i:s", strtotime("-1 week"));
+        $state = TokenState::VALID;
+        $this->storage->expects($this->once())
+            ->method("findToken")
+            ->will($this->returnValue(["token" => $token, "user_id" => $userId, "state" => $state, "expires" => $date]));
+        $this->cookie->expects($this->once())->method("get")->will($this->returnValue($token));
+        $this->cookie->expects($this->once())->method("delete");
+        $this->assertNull($this->service->getPersistentUser());
+    }
+
+    /**
+     * @expectedException SugiPHP\Persistent\InvalidTokenException
+     */
+    public function testGetPersistentUserThrowsExceptionIfTokenStateIsInvalid()
+    {
+        $token = "123";
+        $userId = 1;
+        $date = date("Y-m-d H:i:s", strtotime("+1 week"));
+        $state = TokenState::INVALID;
+        $this->storage->expects($this->once())->method("findToken")
+            ->will($this->returnValue(["token" => $token, "user_id" => $userId, "state" => $state, "expires" => $date]));
+
+        $this->storage->expects($this->once())->method("findUserTokens");
+
+        $this->cookie->expects($this->once())->method("get")->will($this->returnValue($token));
+        $this->cookie->expects($this->once())->method("delete");
+
+        // $this->expectException(InvalidTokenException::class);
+
+        $this->assertNull($this->service->getPersistentUser());
+    }
+
+    public function testGetPersistentUserReturnsUserId()
+    {
+        $token = "123";
+        $userId = 1;
+        $date = date("Y-m-d H:i:s", strtotime("+1 week"));
+        $state = TokenState::VALID;
+        $this->storage->expects($this->once())
+            ->method("findToken")
+            ->will($this->returnValue(["token" => $token, "user_id" => $userId, "state" => $state, "expires" => $date]));
+
+        $this->storage->expects($this->once())->method("changeTokenState")->with($token, TokenState::INVALID);
+        $this->storage->expects($this->once())->method("storeToken");
+        $this->cookie->expects($this->once())->method("get")->will($this->returnValue($token));
+        $this->cookie->expects($this->once())->method("set");
+
+        $this->assertEquals($userId, $this->service->getPersistentUser());
     }
 }
