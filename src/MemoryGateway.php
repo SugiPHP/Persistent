@@ -5,11 +5,11 @@
  * @license http://opensource.org/licenses/mit-license.php (MIT License)
  */
 
-namespace SugiPHP\Persistent\Tests;
+namespace SugiPHP\Persistent;
 
-use SugiPHP\Persistent\GatewayInterface;
-use SugiPHP\Persistent\TokenState;
-
+/**
+ * Used only for tests
+ */
 class MemoryGateway implements GatewayInterface
 {
     /**
@@ -33,14 +33,14 @@ class MemoryGateway implements GatewayInterface
 
     public function findUserTokens($userId, $state)
     {
-        return array_filter($this->storage, function ($arr) {
+        return array_filter($this->storage, function ($arr) use ($state, $userId) {
             return (($arr["user_id"] == $userId) && ($arr["state"] == $state));
         });
     }
 
     public function storeToken($token, $userId, \DateTime $expires)
     {
-        $this->storage[] = ["token" => $token, "user_id" => $userId, "expires" => $expires, $state => TokenState::VALID];
+        $this->storage[] = ["token" => $token, "user_id" => $userId, "expires" => $expires->format("Y-m-d H:i:s"), "state" => TokenState::VALID];
     }
 
     public function changeTokenState($token, $state)

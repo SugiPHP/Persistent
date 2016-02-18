@@ -7,17 +7,15 @@
 
 namespace SugiPHP\Persistent\Tests;
 
-include __DIR__."/MemoryGateway.php";
-
 use SugiPHP\Persistent\CookieInterface;
 use SugiPHP\Persistent\Cookie;
 use SugiPHP\Persistent\TokenState;
 use SugiPHP\Persistent\Persistent as Service;
 use SugiPHP\Persistent\GatewayInterface;
 use SugiPHP\Persistent\InvalidTokenException;
-use SugiPHP\Persistent\Tests\MemoryGateway;
+use SugiPHP\Persistent\MemoryGateway;
 
-class PersistentTest extends \PHPUnit_Framework_TestCase
+class GetPersistentTest extends \PHPUnit_Framework_TestCase
 {
     private $cookie;
     private $storage;
@@ -25,7 +23,7 @@ class PersistentTest extends \PHPUnit_Framework_TestCase
 
     public function setUp()
     {
-        $this->storage = $this->getMock("SugiPHP\Persistent\Tests\MemoryGateway");
+        $this->storage = $this->getMock("SugiPHP\Persistent\MemoryGateway");
         $this->cookie = $this->getMock("SugiPHP\Persistent\Cookie");
         $this->service = new Service($this->storage, $this->cookie);
     }
@@ -148,9 +146,12 @@ class PersistentTest extends \PHPUnit_Framework_TestCase
             ->method("findToken")
             ->will($this->returnValue(["token" => $token, "user_id" => $userId, "state" => $state, "expires" => $date]));
 
-        $this->storage->expects($this->once())->method("changeTokenState")->with($token, TokenState::INVALID);
-        $this->storage->expects($this->once())->method("storeToken");
         $this->cookie->expects($this->once())->method("get")->will($this->returnValue($token));
+        // Invalidates the current token
+        $this->storage->expects($this->once())->method("changeTokenState")->with($token, TokenState::INVALID);
+        // New token is stored
+        $this->storage->expects($this->once())->method("storeToken");
+        // New cookie is set
         $this->cookie->expects($this->once())->method("set");
 
         $this->assertEquals($userId, $this->service->getPersistentUser());
